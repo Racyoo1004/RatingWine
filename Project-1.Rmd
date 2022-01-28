@@ -1,0 +1,196 @@
+---
+title: "STAT 3301"
+author: "Project 1"
+date: "Yoojin Jeong (jeong.358)"
+output: pdf_document
+
+  
+---
+```{r message=FALSE}
+library(readr)
+library(tidyverse)
+library(alr4)
+library(broom)
+```
+\
+
+#### Instructions
+- Replace "FirstName LastName (name.n)" above with your information.
+- Provide your solutions carefully.
+- Include any R code that you use to answer the questions; if a numeric answer is required, show how you calculated it in R. 
+- Knit this document to HTML and upload both the HTML file and your completed Rmd file to Carmen
+- Make sure your solutions are clean and easy-to-read by
+    - formatting all plots to be appropriately sized, with appropriate axis labels.
+    - only including R code that is necessary to answer the questions below.
+    - only including R output that is necessary to answer the questions below (avoiding lengthy output).
+    - providing short written answers explaining your work, and writing in complete sentences.
+
+
+\large
+A case study: Rating Wines from the Piedmont Region of Italy.
+
+`Wine Spectator` magazine contains articles and reviews on every aspect of the wine industry, including ratings of wine from around the world. In a recent issue they independently reviewed and scored 475 wines from the Piedmont region of Italy using a 100-point scale (Wine Spectator, April 30, 2011). The following table shows how the `Wine Spectator` score each wine received independently is used to rate each wine as being classic, outstanding, very good, good, mediocre, or not recommended. 
+
+
+
+Score		  |  Rating
+----------|----------------------
+95-100		|   Classic: a great wine
+90-94		  |   Outstanding: a wine of superior character and style
+85-89		  |   Very good: a wine with special qualities
+80-84		  |   Good: a solid, well-make wine
+75-79		  |   Mediocre: a drinkable wine that may have minor flaws
+Below 75	|   Not Recommended
+
+A key question for most consumers is whether paying more for a bottle of wine will result in a better wine. To investigate this question for wines from the Piedmont region we selected a random sample of 98 of the 475 wines that `Wine Spectator` reviewed. The data, contained in the file named WineRatings, shows the price ($), the Wine Spectator score, and the rating for each wine. WineRatings data set can be found under the “Files/Project/Project 1” page on Carmen
+
+\vspace{1in}
+Managerial Report:
+
+1. Develop a table that shows the number of wines that were classified as classic, out-standing, very good, good, mediocre, and not recommended and the average price.
+    a) Does there appear to be any relationship between the price of the wine and the Wine Spectator rating? 
+
+```{r}
+wine = read.csv("WineRatings.csv")
+wine %>% group_by(Rating) %>% summarise(Number = n(), MeanPrice = mean(Price))
+```
+a) Wine with higher Spectator rating seems to have higher average price.
+
+2. Develop a scatter diagram with price on the horizontal axis and the Wine Spectator score on the vertical axis. 
+    a) Does the relationship between price and score appear to be linear?
+    b) Use appropriate statistical measure in linear regression to talk about the strength of the linear relationship between `Score` and `Price`?
+
+
+<Answer>
+a)
+```{r}
+wine %>% ggplot(aes(x = Price, y = Score)) + geom_point() + theme_bw(18)
+```
+The graph seems to have a curvilinear relationship, not a linear relationship.
+
+b) 
+```{r}
+R = cor(wine$Price, wine$Score)
+R^2
+```
+Correlation coefficient implies strong positive relationship if it's closer to 1 and implies strong negative relationship if it's closer to -1. Since this is 0.45 which is closer to 1, it implies that price and score have positive relationship, but do not show a strong linearity.
+
+
+3. Suppose you are requested to develop a regression model to predict wine score using price for the **same data** that you used to construct the scatter plot in question (2). Assume that you go ahead and fit a simple **linear** regression model. After fitting the simple **linear** regression model, what would be your next steps before you do any inferences like, doing hypothesis testing, constructing confidence interval, etc?. Discuss a comprehensive discussion for your answer. You may use several different plots to help explain your answer.
+
+<Answer>
+```{r}
+wmod = lm(Score ~ Price, data=wine)
+wine %>% ggplot(aes(x = Price, y = Score)) + geom_point() + geom_smooth(method="lm", se=F) + theme_bw(18)
+plot(fitted(wmod), rstandard(wmod), xlab="fitted values", ylab="standardized residuals"); abline(h=0)
+qqnorm(resid(wmod)); qqline(resid(wmod))
+hist(resid(wmod), xlab = "residuals")
+```
+You have to check the model assumption.
+The graph shows bell-curved and symmetric centered around zero which shows normality. Also, in Q-Q plot, most of the plots are on the line.
+
+
+4. When you discuss your answer for the question (3), one of the aspects of the model assumption is the independence of the error term ($e$). How do you justify whether the errors of the regression model are independently distributed based on the nature of the data collection discussed in the introduction paragraphs?
+
+<Answer>
+Since all 475 wines were independently reviewed and scored, we can say that errors of the regression model are independently distributed. 
+
+
+5. An alternative approach was suggested to use logarithmic transformation on the predictor variable. 
+    a) Develop a scatter plot for the predictor variable and the response variable for this situation. Remember, here you need to have `log10(Price)` on the x-axis.
+    b) Develop an estimated linear regression mean function that can be used to estimate the mean score given the price of the wine.
+    c) Add an estimated regression line on the scatter plot from part (a).
+    d) Does this estimated regression line appear to be a good fit for the transformed data?
+
+<Answer>
+a)
+```{r}
+wine %>% ggplot(aes(x = log(Price), y = Score)) + geom_point() + theme_bw(18)
+```
+b)
+```{r}
+summary(lm(Score ~ log10(Price), data = wine))
+```
+
+c)
+```{r}
+wine %>% ggplot(aes(x = log(Price), y = Score)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + theme_bw(18)
+```
+d) Yes, this estimated regression line seems to be a good fit for the data because plots on the graph are scattered around the fitted line and there are no outliers.
+
+\vspace{1in}
+
+6. Now we are ready to do some inferences. Before we attempt to go for the inferences, we will one more time check the model assumptions to make sure that the assumptions are reasonable. Please carry out a complete diagnostic check for the residuals as follows.
+
+    a) If the model fits well, check the linear mean function is appropriate.
+    b) If the model fits well, check the constant variance function is appropriate.
+    c) Errors in the linear model are normally distributed.
+    
+    Note that we may skip to check independence of the errors sicne we already discuss it in the question (4).
+    
+```{r}
+wmod = lm(Score ~ Price, data=wine)
+wine %>% ggplot(aes(x = Price, y = Score)) + geom_point() + geom_smooth(method="lm", se=F) + theme_bw(18)
+plot(fitted(wmod), rstandard(wmod), xlab="fitted values", ylab="standardized residuals"); abline(h=0)
+qqnorm(resid(wmod)); qqline(resid(wmod))
+hist(resid(wmod), xlab = "residuals")
+```
+
+
+7. Bases upon your analysis from question (5), would you say that spending more for a bottle of wine will provide a better wine? Hint: You may consider a one-sided upper tail test for the coefficient of the predictor variable ($H_1: \beta_1 >0$). 
+```{r}
+t.test(wine$Price, wine$Score, mu = 0, alternative = "greater")
+```
+Yes, spending more for a bottle of wine will provide a better wine.
+
+
+8. Again,
+    a) make a scatter plot with Price (on its original scale) on the x-axis and Score on the y-axis. 
+    b) Use your fitted model from question (5) to add a (curved) line to the plot that represents the estimated average score as a function of price, $\hat{E}(Score|Price)$. 
+    c) Add dashed (curved) lines to the plot that represent point-wise, 95% confidence intervals for the mean.
+    
+<Answer>
+a)
+```{r}
+wine %>% ggplot(aes(x = Price, y = Score)) + geom_point() + theme_bw(18)
+```
+b)
+```{r}
+wine.lm = lm(Score ~ log10(Price), data = wine)
+wine.grid = data.frame(Price=seq(from=min(wine$Price), to=max(wine$Price), length.out=100)) 
+
+ypred = predict(wine.lm, newdata=wine.grid, interval="prediction")
+plot(wine$Price, wine$Score, pch=16, xlab="Price", ylab="Score",
+main="Estimated Mean Score as a Function of Price")
+lines(wine.grid[,1], ypred[,1], col="blue", lwd=2)
+```
+c)
+```{r}
+wine.lm = lm(Score ~ log10(Price), data = wine)
+wine.grid = data.frame(Price=seq(from=min(wine$Price), to=max(wine$Price), length.out=100)) 
+
+ypred = predict(wine.lm, newdata=wine.grid, interval="confidence")
+plot(wine$Price, wine$Score, pch=16, xlab="Price", ylab="Score",
+main="Estimated Mean Score as a Function of Price")
+
+lines(wine.grid[,1], ypred[,1], col="blue", lwd=2)
+lines(wine.grid[,1], ypred[,2], col="blue", lty=2)
+lines(wine.grid[,1], ypred[,3], col="blue", lty=2)
+```
+    
+9. (Extra credit) Suppose that you want to spend a maximum of $20 for a bottle of wine. In this case, will spending closer to your upper limit for price result in a better wine than a much lower price? Hint: This time reproduce the same plot from question (8) but with the x-axis limit using (10,20) and see whether are any obvious trend in the estimated mean value of score across the price values between 10 and 20. Here, 10 is the minimum value for the price. Please note that there are many different approaches to handle this question, but what is given in the hint is a simple possible solution.
+
+```{r}
+wine.lm = lm(Score ~ log10(Price), data = wine)
+wine.grid = data.frame(Price=seq(from=min(wine$Price), to=max(wine$Price), length.out=100)) 
+
+ypred = predict(wine.lm, newdata=wine.grid, interval="confidence")
+plot(wine$Price, wine$Score, pch=16, xlim = c(10,20), xlab="Price", ylab="Score",
+main="Estimated Mean Score Across the Price(10,20)")
+
+lines(wine.grid[,1], ypred[,1], col="blue", lwd=2)
+lines(wine.grid[,1], ypred[,2], col="blue", lty=2)
+lines(wine.grid[,1], ypred[,3], col="blue", lty=2)
+```
+In the graph that shows the estimated mean value of score across the price values between 10 and 20, they have slightly positive relationship. Even though the slope of the fitted line is very close to zero, score of the wine still increases so this implies that spending closer to $20 results in a better wine than a much lower price. 
+
